@@ -113,9 +113,9 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.875rem 1.75rem;
+  padding: 0.75rem 1.5rem;
   border-radius: var(--radius);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 500;
   transition: all 0.2s ease;
   cursor: pointer;
@@ -128,7 +128,7 @@ a:hover {
   background: var(--accent);
   color: var(--foreground);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(244, 196, 48, 0.2);
+  box-shadow: 0 2px 8px rgba(244, 196, 48, 0.15);
 }
 
 .btn-primary {
@@ -140,7 +140,7 @@ a:hover {
 .btn-primary:hover {
   background: #d4a017;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(244, 196, 48, 0.3);
+  box-shadow: 0 2px 8px rgba(244, 196, 48, 0.2);
 }
 
 /* Container */
@@ -164,12 +164,12 @@ a:hover {
 
 /* Section spacing */
 .section {
-  padding: 6rem 0;
+  padding: 4rem 0;
 }
 
 @media (min-width: 768px) {
   .section {
-    padding: 8rem 0;
+    padding: 6rem 0;
   }
 }
 
@@ -201,16 +201,15 @@ a:hover {
   background: var(--background);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 2rem;
+  padding: 1.5rem;
   transition: all 0.2s ease;
   position: relative;
-  overflow: hidden;
 }
 
 .card:hover {
   border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(244, 196, 48, 0.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(244, 196, 48, 0.08);
 }
 
 /* Navigation */
