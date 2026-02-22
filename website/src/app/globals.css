@@ -4,11 +4,12 @@
 :root {
   --background: #fefefe;
   --foreground: #1a1a1a;
-  --muted: #f8f8f8;
+  --muted: #fafafa;
   --muted-foreground: #666666;
-  --border: #e5e5e5;
+  --border: #e8e8e8;
   --accent: #f4c430;
   --ring: #f4c430;
+  --accent-light: #fef8e7;
   --radius: 0.5rem;
 }
 
@@ -45,21 +46,27 @@ h1, h2, h3, h4, h5, h6 {
 h1 { 
   font-size: clamp(2.5rem, 5vw, 3.5rem);
   color: var(--foreground);
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 h2 { 
   font-size: clamp(2rem, 4vw, 2.5rem);
   color: var(--foreground);
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 h3 { 
   font-size: clamp(1.5rem, 3vw, 1.75rem);
   color: var(--foreground);
+  font-weight: 600;
 }
 
 h4 { 
   font-size: clamp(1.25rem, 2.5vw, 1.5rem);
   color: var(--foreground);
+  font-weight: 600;
 }
 
 p {
@@ -122,6 +129,23 @@ a:hover {
   border: 1px solid var(--accent);
   background: var(--background);
   color: var(--accent);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(244, 196, 48, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.btn:hover::before {
+  left: 100%;
 }
 
 .btn:hover {
@@ -202,14 +226,32 @@ a:hover {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1.5rem;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
 }
 
 .card:hover {
   border-color: var(--accent);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(244, 196, 48, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(244, 196, 48, 0.1);
+  background: var(--accent-light);
+}
+
+.card:hover::before {
+  transform: scaleX(1);
 }
 
 /* Navigation */
@@ -270,6 +312,7 @@ a:hover {
   font-size: 0.875rem;
   line-height: 1.6;
   position: relative;
+  transition: all 0.3s ease;
 }
 
 .skill-file::before {
@@ -283,6 +326,12 @@ a:hover {
   border-radius: 0.25rem;
   font-size: 0.75rem;
   font-weight: 600;
+  box-shadow: 0 2px 4px rgba(244, 196, 48, 0.2);
+}
+
+.skill-file:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(244, 196, 48, 0.15);
 }
 
 /* Animations */
