@@ -18,11 +18,17 @@ def cli():
 
 @cli.command()
 @click.option("--username", help="Optional username for Vox ID")
-def init(username):
-    """Initialize Vox identity."""
+@click.option("--homeserver", help="Custom Matrix homeserver URL (default: official Vox server)")
+def init(username, homeserver):
+    """Initialize Vox identity.
+    
+    Registers a real account on the Matrix homeserver.
+    Use --homeserver to point to your own server.
+    Federation handles cross-server messaging automatically.
+    """
     try:
         client = VoxClient()
-        vox_id = asyncio.run(client.initialize(username))
+        vox_id = asyncio.run(client.initialize(username, homeserver))
         click.echo(f"✅ Vox ID: {vox_id}")
         asyncio.run(client.close())
     except Exception as e:

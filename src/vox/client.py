@@ -3,6 +3,7 @@
 import asyncio
 import uuid
 import secrets
+import aiohttp
 from typing import Optional, List, Dict, Any
 from .config import Config, VOX_HOMESERVER, VOX_DOMAIN
 from .storage import Storage, Conversation
@@ -10,7 +11,11 @@ from .matrix_backend import MatrixBackend
 
 
 class VoxClient:
-    """Main Vox client for agent-to-agent communication."""
+    """Main Vox client for agent-to-agent communication.
+    
+    Uses real Matrix registration — each `vox init` creates a real account
+    on the homeserver and returns a real access token.
+    """
     
     def __init__(self, vox_home: Optional[str] = None):
         self.storage = Storage(vox_home)
@@ -30,29 +35,102 @@ class VoxClient:
             self.backend = MatrixBackend(config, self.storage)
         return self.backend
     
-    async def initialize(self, username: Optional[str] = None) -> str:
-        """Initialize Vox identity.
+    async def initialize(
+        self,
+        username: Optional[str] = None,
+        homeserver: Optional[str] = None,
+    ) -> str:
+        """Initialize Vox identity by registering on the Matrix homeserver.
+        
+        This performs REAL Matrix registration:
+        1. Generates a vox_<username> or vox_<random> ID
+        2. Registers on the homeserver via /_matrix/client/v3/register
+        3. Stores the real access token locally
         
         Args:
             username: Optional human-readable username. If provided, the Vox ID
                      will be vox_<username>. If not, a random hex ID is generated.
+            homeserver: Optional custom homeserver URL. Defaults to the official
+                       Vox homeserver. Users can point to their own Matrix server
+                       for self-hosting — federation handles cross-server comms.
         
         Returns:
             The created Vox ID string.
-        """
-        vox_id = f"vox_{username}" if username else f"vox_{secrets.token_hex(4)}"
         
+        Raises:
+            Exception: If registration fails (username taken, server down, etc.)
+        """
+        server = homeserver or VOX_HOMESERVER
+        vox_id = f"vox_{username}" if username else f"vox_{secrets.token_hex(4)}"
+        password = secrets.token_urlsafe(32)
+        
+        # Step 1: Real Matrix registration
+        register_url = f"{server.rstrip('/')}/_matrix/client/v3/register"
+        
+        payload = {
+            "username": vox_id,
+            "password": password,
+            "auth": {
+                "type": "m.login.dummy",
+            },
+            "inhibit_login": False,
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(register_url, json=payload) as resp:
+                data = await resp.json()
+                
+                if resp.status == 200:
+                    # Registration successful
+                    access_token = data["access_token"]
+                    user_id = data["user_id"]
+                    device_id = data["device_id"]
+                elif resp.status == 400 and data.get("errcode") == "M_USER_IN_USE":
+                    # Username taken — try to login instead
+                    access_token, user_id, device_id = await self._login(
+                        server, vox_id, password
+                    )
+                else:
+                    error = data.get("error", f"HTTP {resp.status}")
+                    raise Exception(f"Registration failed: {error}")
+        
+        # Step 2: Save config with real credentials
         self.config = Config(
             vox_id=vox_id,
-            homeserver=VOX_HOMESERVER,
-            access_token=f"token_{uuid.uuid4().hex}",
-            device_id=f"device_{uuid.uuid4().hex[:8]}",
-            user_id=f"@{vox_id}:{VOX_DOMAIN}"
+            homeserver=server,
+            access_token=access_token,
+            device_id=device_id,
+            user_id=user_id,
         )
         
         self.config.save()
         
         return vox_id
+    
+    async def _login(
+        self, homeserver: str, username: str, password: str
+    ) -> tuple:
+        """Login to existing Matrix account."""
+        login_url = f"{homeserver.rstrip('/')}/_matrix/client/v3/login"
+        
+        payload = {
+            "type": "m.login.password",
+            "identifier": {
+                "type": "m.id.user",
+                "user": username,
+            },
+            "password": password,
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.post(login_url, json=payload) as resp:
+                data = await resp.json()
+                
+                if resp.status == 200:
+                    return data["access_token"], data["user_id"], data["device_id"]
+                else:
+                    error = data.get("error", f"HTTP {resp.status}")
+                    raise Exception(f"Login failed: {error}")
     
     def whoami(self) -> str:
         """Get current Vox ID."""
@@ -66,7 +144,8 @@ class VoxClient:
         return {
             "vox_id": config.vox_id,
             "homeserver": config.homeserver,
-            "contacts": len(contacts)
+            "contacts": len(contacts),
+            "user_id": config.user_id,
         }
     
     def add_contact(self, name: str, vox_id: str) -> None:
@@ -87,28 +166,14 @@ class VoxClient:
         message: str, 
         conversation_id: Optional[str] = None
     ) -> str:
-        """Send a message to a contact.
-        
-        Args:
-            contact: Contact name (must exist in contacts).
-            message: Message body text.
-            conversation_id: Optional conversation ID for threaded replies.
-        
-        Returns:
-            The conversation ID.
-        
-        Raises:
-            ValueError: If contact not found in contacts list.
-        """
+        """Send a message to a contact."""
         backend = self._ensure_backend()
         
-        # Get vox_id from contact name
         vox_id = self.storage.get_contact(contact)
         if vox_id is None:
             raise ValueError(f"Contact '{contact}' not found")
         
         await backend.initialize()
-        
         conv_id = await backend.send_message(vox_id, message, conversation_id)
         return conv_id
     
