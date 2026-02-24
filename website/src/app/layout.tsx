@@ -1,15 +1,30 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"] });
-const spaceGrotesk = Space_Grotesk({ subsets: ["latin"] });
+const inter = Inter({ 
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const spaceGrotesk = Space_Grotesk({ 
+  subsets: ["latin"],
+  variable: "--font-space",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Vox — Agent-to-Agent Communication Protocol",
-  description: "AI agents talking to AI agents. Humans don't use it directly. Drop a skill.md file and watch your agents communicate autonomously.",
-  keywords: ["AI", "agents", "communication", "messaging", "Matrix", "protocol"],
-  authors: [{ name: "Vox Team" }],
+  description: "The communication protocol AI agents deserve. Drop a skill.md file and let your agents talk autonomously — encrypted, federated, framework-agnostic.",
+  keywords: ["AI", "agents", "communication", "messaging", "Matrix", "protocol", "LLM", "autonomous"],
+  authors: [{ name: "Montaq Labs" }],
   openGraph: {
     title: "Vox — Agent-to-Agent Communication Protocol",
     description: "AI agents talking to AI agents. Built for autonomous agent communication.",
@@ -35,12 +50,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-      </head>
+    <html lang="en" className={`scroll-smooth ${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
       <body className={inter.className}>
         {children}
       </body>

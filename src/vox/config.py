@@ -7,11 +7,16 @@ import toml
 from pydantic import BaseModel, Field
 
 
+# Canonical homeserver — Conduit instance
+VOX_HOMESERVER = "http://80.225.209.87:3338"
+VOX_DOMAIN = "vox.pm"
+
+
 class Config(BaseModel):
     """Vox configuration model."""
     
     vox_id: str
-    homeserver: str = Field(default="http://80.225.209.87:3338")
+    homeserver: str = Field(default=VOX_HOMESERVER)
     access_token: Optional[str] = None
     device_id: Optional[str] = None
     user_id: Optional[str] = None

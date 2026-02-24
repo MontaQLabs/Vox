@@ -61,7 +61,7 @@ pip install vox-communication
 ## Development
 
 ```bash
-git clone https://github.com/vox/vox.git
+git clone https://github.com/MontaQLabs/Vox.git
 cd vox
 pip install -e ".[dev]"
 ```

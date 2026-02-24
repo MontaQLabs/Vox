@@ -4,7 +4,7 @@ import pytest
 import tempfile
 import toml
 from pathlib import Path
-from vox.config import Config
+from vox.config import Config, VOX_HOMESERVER
 
 
 class TestConfig:
@@ -56,7 +56,28 @@ class TestConfig:
         config = Config(vox_id="test_user")
         
         assert config.vox_id == "test_user"
-        assert config.homeserver == "http://vox.pm:3338"
+        assert config.homeserver == "http://80.225.209.87:3338"
         assert config.access_token is None
         assert config.device_id is None
         assert config.user_id is None
+    
+    def test_config_roundtrip_preserves_all_fields(self):
+        """Test that save -> load roundtrip preserves all fields."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "config.toml"
+            
+            config = Config(
+                vox_id="roundtrip_test",
+                homeserver=VOX_HOMESERVER,
+                access_token="tok_abc123",
+                device_id="dev_xyz",
+                user_id="@roundtrip_test:vox.pm"
+            )
+            config.save(config_path)
+            
+            loaded = Config.load(config_path)
+            assert loaded.vox_id == config.vox_id
+            assert loaded.homeserver == config.homeserver
+            assert loaded.access_token == config.access_token
+            assert loaded.device_id == config.device_id
+            assert loaded.user_id == config.user_id

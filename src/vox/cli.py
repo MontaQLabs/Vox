@@ -10,7 +10,7 @@ from .config import Config
 
 
 @click.group()
-@click.version_option()
+@click.version_option(version="0.1.0")
 def cli():
     """Vox — Agent-to-Agent Communication Protocol."""
     pass
@@ -51,7 +51,11 @@ def status():
     try:
         client = VoxClient()
         status_info = client.status()
-        click.echo(f"Vox ID: {status_info['vox_id']} | Homeserver: {status_info['homeserver']} | Contacts: {status_info['contacts']}")
+        click.echo(
+            f"Vox ID: {status_info['vox_id']} | "
+            f"Homeserver: {status_info['homeserver']} | "
+            f"Contacts: {status_info['contacts']}"
+        )
     except FileNotFoundError:
         click.echo("❌ Not initialized. Run 'vox init' first.", err=True)
         sys.exit(4)
@@ -124,15 +128,15 @@ def contact_remove(name):
 
 
 @cli.command()
-@click.argument("contact")
+@click.argument("contact_name", metavar="CONTACT")
 @click.argument("message")
 @click.option("--conv", help="Conversation ID for replies")
-def send(contact, message, conv):
+def send(contact_name, message, conv):
     """Send a message to a contact."""
     try:
         client = VoxClient()
-        conv_id = asyncio.run(client.send_message(contact, message, conv))
-        click.echo(f"✅ Sent to {contact} ({conv_id})")
+        conv_id = asyncio.run(client.send_message(contact_name, message, conv))
+        click.echo(f"✅ Sent to {contact_name} ({conv_id})")
         asyncio.run(client.close())
     except FileNotFoundError:
         click.echo("❌ Not initialized. Run 'vox init' first.", err=True)
@@ -152,6 +156,7 @@ def inbox(from_contact):
     try:
         client = VoxClient()
         conversations = asyncio.run(client.get_inbox(from_contact))
+        asyncio.run(client.close())
         
         if not conversations:
             click.echo("[]")
@@ -185,11 +190,12 @@ def inbox(from_contact):
 
 @cli.command()
 @click.argument("conversation_id")
-async def conversation(conversation_id):
+def conversation(conversation_id):
     """Get full conversation history."""
     try:
         client = VoxClient()
-        conv = await client.get_conversation(conversation_id)
+        conv = asyncio.run(client.get_conversation(conversation_id))
+        asyncio.run(client.close())
         
         if conv is None:
             click.echo(f"❌ Conversation '{conversation_id}' not found", err=True)
@@ -210,7 +216,6 @@ async def conversation(conversation_id):
         }
         
         click.echo(json.dumps(conv_data, indent=2))
-        await client.close()
     except FileNotFoundError:
         click.echo("❌ Not initialized. Run 'vox init' first.", err=True)
         sys.exit(4)
@@ -221,13 +226,13 @@ async def conversation(conversation_id):
 
 @cli.command()
 @click.argument("query")
-async def discover(query):
+def discover(query):
     """Search for agents in directory."""
     try:
         client = VoxClient()
-        agents = await client.discover_agents(query)
+        agents = asyncio.run(client.discover_agents(query))
+        asyncio.run(client.close())
         click.echo(json.dumps(agents, indent=2))
-        await client.close()
     except FileNotFoundError:
         click.echo("❌ Not initialized. Run 'vox init' first.", err=True)
         sys.exit(4)
@@ -238,13 +243,13 @@ async def discover(query):
 
 @cli.command()
 @click.option("--description", required=True, help="Agent description")
-async def advertise(description):
+def advertise(description):
     """List agent in public directory."""
     try:
         client = VoxClient()
-        await client.advertise(description)
+        asyncio.run(client.advertise(description))
+        asyncio.run(client.close())
         click.echo("✅ Listed in directory")
-        await client.close()
     except FileNotFoundError:
         click.echo("❌ Not initialized. Run 'vox init' first.", err=True)
         sys.exit(4)
@@ -255,20 +260,6 @@ async def advertise(description):
 
 def main():
     """Main entry point for Vox CLI."""
-    # Convert sync commands to async
-    def async_command_wrapper(func):
-        def wrapper(*args, **kwargs):
-            return asyncio.run(func(*args, **kwargs))
-        return wrapper
-    
-    # Wrap async commands
-    init.callback = async_command_wrapper(init.callback)
-    send.callback = async_command_wrapper(send.callback)
-    inbox.callback = async_command_wrapper(inbox.callback)
-    conversation.callback = async_command_wrapper(conversation.callback)
-    discover.callback = async_command_wrapper(discover.callback)
-    advertise.callback = async_command_wrapper(advertise.callback)
-    
     cli()
 
 

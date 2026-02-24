@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface TerminalProps {
   title?: string
@@ -9,53 +9,70 @@ interface TerminalProps {
 }
 
 export function Terminal({ title = "vox@agent", commands, className }: TerminalProps) {
-  const [currentCommand, setCurrentCommand] = useState(0)
+  const [displayedLines, setDisplayedLines] = useState<string[]>([])
   const [currentText, setCurrentText] = useState('')
+  const [currentIndex, setCurrentIndex] = useState(0)
   const [isTyping, setIsTyping] = useState(true)
+  const contentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (currentCommand >= commands.length) {
+    if (currentIndex >= commands.length) {
       setIsTyping(false)
       return
     }
 
-    const command = commands[currentCommand]
-    let charIndex = 0
+    const command = commands[currentIndex]
+    let charIdx = 0
 
     const typeInterval = setInterval(() => {
-      if (charIndex <= command.length) {
-        setCurrentText(command.substring(0, charIndex))
-        charIndex++
+      if (charIdx <= command.length) {
+        setCurrentText(command.substring(0, charIdx))
+        charIdx++
       } else {
         clearInterval(typeInterval)
         setTimeout(() => {
-          setCurrentCommand(currentCommand + 1)
+          setDisplayedLines(prev => [...prev, command])
           setCurrentText('')
-        }, 1000)
+          setCurrentIndex(prev => prev + 1)
+        }, 800)
       }
-    }, 50)
+    }, 35)
 
     return () => clearInterval(typeInterval)
-  }, [currentCommand, commands])
+  }, [currentIndex, commands])
+
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight
+    }
+  }, [displayedLines, currentText])
 
   return (
-    <div className={`terminal ${className}`}>
+    <div className={`terminal ${className || ''}`}>
       <div className="terminal-header">
-        <div className="terminal-dot bg-red-500"></div>
-        <div className="terminal-dot bg-yellow-500"></div>
-        <div className="terminal-dot bg-green-500"></div>
-        <span className="ml-4 text-sm font-mono">{title}</span>
+        <div className="terminal-dot" />
+        <div className="terminal-dot" />
+        <div className="terminal-dot" />
+        <span className="terminal-title">{title}</span>
       </div>
-      <div className="terminal-content">
-        {commands.slice(0, currentCommand).map((cmd, idx) => (
-          <div key={idx} className="mb-2">
-            <span className="text-muted-foreground">$</span> {cmd}
+      <div className="terminal-content" ref={contentRef}>
+        {displayedLines.map((cmd, idx) => (
+          <div key={idx} style={{ marginBottom: '0.375rem' }}>
+            <span className="terminal-prompt">❯ </span>
+            <span style={{ color: 'var(--text-primary)' }}>{cmd}</span>
           </div>
         ))}
         {isTyping && (
-          <div className="mb-2">
-            <span className="text-muted-foreground">$</span> {currentText}
-            <span className="animate-pulse">_</span>
+          <div style={{ marginBottom: '0.375rem' }}>
+            <span className="terminal-prompt">❯ </span>
+            <span style={{ color: 'var(--text-primary)' }}>{currentText}</span>
+            <span className="terminal-cursor" />
+          </div>
+        )}
+        {!isTyping && (
+          <div style={{ marginBottom: '0.375rem' }}>
+            <span className="terminal-prompt">❯ </span>
+            <span className="terminal-cursor" />
           </div>
         )}
       </div>

@@ -1,9 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId)
@@ -13,22 +20,42 @@ export function Navigation() {
     }
   }
 
+  const navItems = [
+    { name: 'Features', id: 'features' },
+    { name: 'Install', id: 'install' },
+    { name: 'Docs', href: '/docs' },
+    { name: 'GitHub', href: 'https://github.com/MontaQLabs/Vox' },
+  ]
+
   return (
-    <nav className="nav">
-      <div className="container">
-        <div className="flex justify-between items-center py-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-foreground rounded"></div>
-            <span className="text-xl font-semibold">Vox</span>
-          </div>
-          
-          <div className="hidden md:flex gap-8">
-            {[
-              { name: 'Features', id: 'features' },
-              { name: 'Install', id: 'install' },
-              { name: 'Docs', href: 'https://docs.vox.pm' },
-              { name: 'GitHub', href: 'https://github.com/vox/vox' }
-            ].map((item) => (
+    <nav className={`nav ${scrolled ? 'scrolled' : ''}`} id="main-nav">
+      <div style={{ padding: '0.625rem 1.125rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {/* Logo */}
+          <a
+            href="/"
+            style={{
+              display: 'flex', alignItems: 'center', gap: '0.5rem',
+              textDecoration: 'none',
+            }}
+          >
+            <div style={{
+              width: '1.5rem', height: '1.5rem',
+              background: 'var(--accent)', borderRadius: '0.3125rem',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.6875rem', fontWeight: 800, color: '#050506',
+              fontFamily: '"Space Grotesk", sans-serif',
+            }}>V</div>
+            <span style={{
+              fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-primary)',
+              fontFamily: '"Space Grotesk", sans-serif',
+              letterSpacing: '-0.02em',
+            }}>Vox</span>
+          </a>
+
+          {/* Desktop links */}
+          <div className="hidden-mobile" style={{ gap: '1.75rem', alignItems: 'center' }}>
+            {navItems.map((item) => (
               <a
                 key={item.name}
                 href={item.href || `#${item.id}`}
@@ -38,18 +65,31 @@ export function Navigation() {
                     scrollToSection(item.id!)
                   }
                 }}
-                className="text-sm transition-colors hover:text-muted-foreground"
+                style={{
+                  fontSize: '0.75rem', color: 'var(--text-muted)',
+                  textDecoration: 'none', transition: 'color 0.2s ease',
+                  fontWeight: 500, letterSpacing: '0.01em',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--text-primary)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
               >
                 {item.name}
               </a>
             ))}
           </div>
-          
+
+          {/* Mobile menu button */}
           <button
-            className="md:hidden"
+            className="mobile-only"
             onClick={() => setIsOpen(!isOpen)}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: '0.25rem', color: 'var(--text-secondary)',
+              alignItems: 'center', justifyContent: 'center',
+            }}
+            aria-label="Toggle menu"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               {isOpen ? (
                 <path d="M18 6L6 18M6 6l12 12" />
               ) : (
@@ -58,15 +98,16 @@ export function Navigation() {
             </svg>
           </button>
         </div>
-        
+
+        {/* Mobile menu */}
         {isOpen && (
-          <div className="md:hidden py-4 space-y-2">
-            {[
-              { name: 'Features', id: 'features' },
-              { name: 'Install', id: 'install' },
-              { name: 'Docs', href: 'https://docs.vox.pm' },
-              { name: 'GitHub', href: 'https://github.com/vox/vox' }
-            ].map((item) => (
+          <div style={{
+            paddingTop: '0.625rem',
+            borderTop: '1px solid var(--border)',
+            marginTop: '0.625rem',
+            display: 'flex', flexDirection: 'column', gap: '0.125rem',
+          }}>
+            {navItems.map((item) => (
               <a
                 key={item.name}
                 href={item.href || `#${item.id}`}
@@ -76,7 +117,12 @@ export function Navigation() {
                     scrollToSection(item.id!)
                   }
                 }}
-                className="block py-2 text-sm transition-colors hover:text-muted-foreground"
+                style={{
+                  padding: '0.5rem 0.625rem',
+                  fontSize: '0.8125rem', color: 'var(--text-secondary)',
+                  textDecoration: 'none', borderRadius: 'var(--radius-sm)',
+                  transition: 'all 0.2s ease',
+                }}
               >
                 {item.name}
               </a>

@@ -50,7 +50,7 @@ vox = "vox.cli:main"
 
 [project.urls]
 Homepage = "https://vox.pm"
-Repository = "https://github.com/vox/vox"
+Repository = "https://github.com/MontaQLabs/Vox"
 Documentation = "https://docs.vox.pm"
 
 [tool.setuptools.packages.find]

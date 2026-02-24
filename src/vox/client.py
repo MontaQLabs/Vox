@@ -4,7 +4,7 @@ import asyncio
 import uuid
 import secrets
 from typing import Optional, List, Dict, Any
-from .config import Config
+from .config import Config, VOX_HOMESERVER, VOX_DOMAIN
 from .storage import Storage, Conversation
 from .matrix_backend import MatrixBackend
 
@@ -14,28 +14,40 @@ class VoxClient:
     
     def __init__(self, vox_home: Optional[str] = None):
         self.storage = Storage(vox_home)
-        self.config = None
-        self.backend = None
+        self.config: Optional[Config] = None
+        self.backend: Optional[MatrixBackend] = None
     
-    def _ensure_initialized(self) -> None:
-        """Ensure Vox is initialized."""
+    def _ensure_config(self) -> Config:
+        """Ensure config is loaded. Does NOT create the Matrix backend."""
         if self.config is None:
             self.config = Config.load()
+        return self.config
+    
+    def _ensure_backend(self) -> MatrixBackend:
+        """Ensure the Matrix backend is initialized (lazy)."""
+        config = self._ensure_config()
         if self.backend is None:
-            self.backend = MatrixBackend(self.config, self.storage)
+            self.backend = MatrixBackend(config, self.storage)
+        return self.backend
     
     async def initialize(self, username: Optional[str] = None) -> str:
-        """Initialize Vox identity."""
-        vox_id = username or f"vox_{secrets.token_hex(4)}"
+        """Initialize Vox identity.
         
-        # In a real implementation, this would register with Matrix homeserver
-        # For now, create a mock configuration
+        Args:
+            username: Optional human-readable username. If provided, the Vox ID
+                     will be vox_<username>. If not, a random hex ID is generated.
+        
+        Returns:
+            The created Vox ID string.
+        """
+        vox_id = f"vox_{username}" if username else f"vox_{secrets.token_hex(4)}"
+        
         self.config = Config(
             vox_id=vox_id,
-            homeserver="http://vox.pm:3338",
-            access_token=f"mock_token_{uuid.uuid4().hex}",
+            homeserver=VOX_HOMESERVER,
+            access_token=f"token_{uuid.uuid4().hex}",
             device_id=f"device_{uuid.uuid4().hex[:8]}",
-            user_id=f"@{vox_id}:vox.pm"
+            user_id=f"@{vox_id}:{VOX_DOMAIN}"
         )
         
         self.config.save()
@@ -44,16 +56,16 @@ class VoxClient:
     
     def whoami(self) -> str:
         """Get current Vox ID."""
-        self._ensure_initialized()
-        return self.config.vox_id
+        config = self._ensure_config()
+        return config.vox_id
     
     def status(self) -> Dict[str, Any]:
         """Get Vox status."""
-        self._ensure_initialized()
+        config = self._ensure_config()
         contacts = self.storage.get_contacts()
         return {
-            "vox_id": self.config.vox_id,
-            "homeserver": self.config.homeserver,
+            "vox_id": config.vox_id,
+            "homeserver": config.homeserver,
             "contacts": len(contacts)
         }
     
@@ -75,51 +87,54 @@ class VoxClient:
         message: str, 
         conversation_id: Optional[str] = None
     ) -> str:
-        """Send a message to a contact."""
-        self._ensure_initialized()
+        """Send a message to a contact.
+        
+        Args:
+            contact: Contact name (must exist in contacts).
+            message: Message body text.
+            conversation_id: Optional conversation ID for threaded replies.
+        
+        Returns:
+            The conversation ID.
+        
+        Raises:
+            ValueError: If contact not found in contacts list.
+        """
+        backend = self._ensure_backend()
         
         # Get vox_id from contact name
         vox_id = self.storage.get_contact(contact)
         if vox_id is None:
             raise ValueError(f"Contact '{contact}' not found")
         
-        await self.backend.initialize()
+        await backend.initialize()
         
-        conv_id = await self.backend.send_message(vox_id, message, conversation_id)
+        conv_id = await backend.send_message(vox_id, message, conversation_id)
         return conv_id
     
     async def get_inbox(self, from_contact: Optional[str] = None) -> List[Conversation]:
         """Get conversations with new messages."""
-        self._ensure_initialized()
-        
-        await self.backend.initialize()
-        
-        conversations = await self.backend.get_inbox(from_contact)
-        return conversations
+        backend = self._ensure_backend()
+        await backend.initialize()
+        return await backend.get_inbox(from_contact)
     
     async def get_conversation(self, conversation_id: str) -> Optional[Conversation]:
         """Get full conversation history."""
-        self._ensure_initialized()
-        
-        await self.backend.initialize()
-        
-        return await self.backend.get_conversation(conversation_id)
+        backend = self._ensure_backend()
+        await backend.initialize()
+        return await backend.get_conversation(conversation_id)
     
     async def discover_agents(self, query: str) -> List[Dict[str, str]]:
         """Search for agents."""
-        self._ensure_initialized()
-        
-        await self.backend.initialize()
-        
-        return await self.backend.discover_agents(query)
+        backend = self._ensure_backend()
+        await backend.initialize()
+        return await backend.discover_agents(query)
     
     async def advertise(self, description: str) -> None:
         """Advertise agent in directory."""
-        self._ensure_initialized()
-        
-        await self.backend.initialize()
-        
-        await self.backend.advertise_agent(description)
+        backend = self._ensure_backend()
+        await backend.initialize()
+        await backend.advertise_agent(description)
     
     async def close(self) -> None:
         """Close the client."""
