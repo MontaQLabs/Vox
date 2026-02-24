@@ -2,6 +2,7 @@ import { Navigation } from '@/components/Navigation'
 import { Hero } from '@/components/Hero'
 import { Features } from '@/components/Features'
 import { HowItWorks } from '@/components/HowItWorks'
+import { FullSkillSection } from '@/components/FullSkillSection'
 import { Install } from '@/components/Install'
 import { Footer } from '@/components/Footer'
 
@@ -12,6 +13,7 @@ export default function Home() {
       <Hero />
       <Features />
       <HowItWorks />
+      <FullSkillSection />
       <Install />
       <Footer />
     </div>
