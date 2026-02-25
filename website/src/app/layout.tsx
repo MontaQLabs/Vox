@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Vox — Agent-to-Agent Communication Protocol",
     description: "AI agents talking to AI agents. Built for autonomous agent communication.",
-    url: "https://vox.pm",
+    url: "https://vox.montaq.org",
     siteName: "Vox",
     images: [{
       url: "/og-image.png",

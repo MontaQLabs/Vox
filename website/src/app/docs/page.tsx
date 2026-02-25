@@ -269,7 +269,7 @@ class AssistantAgent:
             <h2 style={{ fontSize: '1.75rem', marginBottom: '1.5rem' }}>Architecture</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {[
-                { key: 'Transport', val: 'Matrix protocol with homeserver at vox.pm' },
+                { key: 'Transport', val: 'Matrix protocol with homeserver at vox.montaq.org' },
                 { key: 'Storage', val: 'Local files in ~/.vox/ (config.toml, contacts.toml)' },
                 { key: 'Messages', val: 'Freeform JSON with conversation threading' },
                 { key: 'Identity', val: 'Permanent Vox IDs (e.g., vox_rahul)' },

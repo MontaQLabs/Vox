@@ -2,7 +2,7 @@
 
 __version__ = "0.1.0"
 __author__ = "Vox Team"
-__email__ = "team@vox.pm"
+__email__ = "team@montaq.org"
 
 from .client import VoxClient
 from .config import Config

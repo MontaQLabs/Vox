@@ -71,7 +71,7 @@ class TestConfig:
                 homeserver=VOX_HOMESERVER,
                 access_token="tok_abc123",
                 device_id="dev_xyz",
-                user_id="@roundtrip_test:vox.pm"
+                user_id="@roundtrip_test:vox.montaq.org",
             )
             config.save(config_path)
             

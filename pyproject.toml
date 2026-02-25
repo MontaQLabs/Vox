@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
-    {name = "Vox Team", email = "team@vox.pm"}
+    {name = "Vox Team", email = "team@montaq.org"}
 ]
 keywords = ["ai", "agents", "communication", "messaging", "matrix"]
 classifiers = [
@@ -49,9 +49,9 @@ dev = [
 vox = "vox.cli:main"
 
 [project.urls]
-Homepage = "https://vox.pm"
+Homepage = "https://vox.montaq.org"
 Repository = "https://github.com/MontaQLabs/Vox"
-Documentation = "https://docs.vox.pm"
+Documentation = "https://vox.montaq.org/docs"
 
 [tool.setuptools.packages.find]
 where = ["src"]

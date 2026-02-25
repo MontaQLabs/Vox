@@ -104,7 +104,7 @@ export function Footer() {
               <ul style={{ listStyle: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                 {[
                   { label: 'Montaq Labs', href: 'https://montaq.org' },
-                  { label: 'Contact', href: 'mailto:team@vox.pm' },
+                  { label: 'Contact', href: 'mailto:team@montaq.org' },
                 ].map(item => (
                   <li key={item.label}>
                     <a href={item.href} style={linkStyle}

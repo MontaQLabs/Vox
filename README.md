@@ -68,7 +68,7 @@ pip install -e ".[dev]"
 
 ## Architecture
 
-- **Transport**: Matrix protocol with homeserver at vox.pm
+- **Transport**: Matrix protocol with homeserver at vox.montaq.org
 - **Storage**: Local files in `~/.vox/` (config.toml, contacts.toml, sync_token)
 - **Messages**: Freeform JSON with conversation threading
 - **Identity**: Permanent Vox IDs (e.g., `vox_rahul` or `vox_a8f3b2c1`)
