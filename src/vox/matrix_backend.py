@@ -1,11 +1,9 @@
 """Matrix backend integration for Vox."""
 
-import asyncio
 import uuid
 from datetime import datetime
 from typing import Dict, List, Optional, Any
-from nio import AsyncClient, RoomMessageText, SyncResponse, RoomPreset
-from nio.responses import JoinResponse
+from nio import AsyncClient, RoomMessageText, RoomPreset
 from .config import Config
 from .storage import Storage, Message, Conversation
 
@@ -20,14 +18,19 @@ class MatrixBackend:
             homeserver=config.homeserver,
         )
         self.client.access_token = config.access_token
+        self._initialized = False
     
     async def initialize(self) -> None:
-        """Initialize the Matrix client."""
+        """Initialize the Matrix client (no-op after first call)."""
+        if self._initialized:
+            return
         try:
             await self.client.sync()
+            self._initialized = True
         except Exception as e:
             # Conduit/nio sometimes have validation issues on first sync, ignore for now
             print(f"Initial sync warning: {e}")
+            self._initialized = True
     
     async def send_message(
         self, 
@@ -39,8 +42,8 @@ class MatrixBackend:
         if conversation_id is None:
             conversation_id = f"conv_{uuid.uuid4().hex[:8]}"
         
-        # Create a room for the conversation
-        room_id = await self._get_or_create_room(to_vox_id, conversation_id)
+        # Get (or lazily create) the persistent per-contact room
+        room_id = await self._get_or_create_room(to_vox_id)
         
         # Send the message
         content = {
@@ -54,23 +57,29 @@ class MatrixBackend:
             }
         }
         
-        response = await self.client.room_send(
+        await self.client.room_send(
             room_id=room_id,
             message_type="m.room.message",
             content=content
         )
-        
-        # Handle different response types
-        if hasattr(response, 'event_id') and response.event_id:
-            return conversation_id
-        elif hasattr(response, 'room_id') and response.room_id:
-            return conversation_id
-        elif isinstance(response, str):
-            return conversation_id
-        else:
-            # For demo purposes, consider it successful even if response is unexpected
-            print(f"Message sent with response: {response}")
-            return conversation_id
+
+        # Save sent message to local history
+        msg = Message(
+            from_vox_id=self.config.vox_id,
+            to_vox_id=to_vox_id,
+            timestamp=datetime.utcnow().isoformat() + "Z",
+            conversation_id=conversation_id,
+            body=body
+        )
+        with_contact = "unknown"
+        contacts = self.storage.get_contacts()
+        for name, v_id in contacts.items():
+            if v_id == to_vox_id:
+                with_contact = name
+                break
+
+        self.storage.save_messages(conversation_id, with_contact, [msg])
+        return conversation_id
     
     async def get_inbox(self, from_contact: Optional[str] = None) -> List[Conversation]:
         """Get conversations with new messages."""
@@ -84,33 +93,76 @@ class MatrixBackend:
             
             conversations = []
             
-            # Handle different response formats
+            # Auto-join invited rooms and persist the room mapping so replies
+            # don't need an extra alias-resolution round-trip.
+            if hasattr(response, 'rooms') and response.rooms.invite:
+                for inv_room_id, inv_info in response.rooms.invite.items():
+                    await self.client.join(inv_room_id)
+                    print(f"Auto-joined room: {inv_room_id}")
+                    # Extract the inviter's user ID from the invite state events
+                    inviter = None
+                    try:
+                        for event in inv_info.invite_state.events:
+                            sender = getattr(event, "sender", None)
+                            if sender and sender != (self.config.user_id or self._to_matrix_id(self.config.vox_id)):
+                                inviter = sender
+                                break
+                    except Exception:
+                        pass
+                    if inviter and not self.storage.get_room(inviter):
+                        self.storage.set_room(inviter, inv_room_id)
+
+            # Process joined rooms
             if hasattr(response, 'rooms') and response.rooms:
                 rooms = response.rooms.join
             else:
-                # Fallback for different Matrix server implementations
                 rooms = {}
             
             for room_id, room_info in rooms.items():
-                # Get messages from timeline
+                # First pass: find if any message in the timeline has a conversation_id
+                # or if we have a way to derive it from the room
+                room_conv_id = None
+                if hasattr(room_info, 'timeline') and room_info.timeline:
+                    for event in room_info.timeline.events:
+                        if isinstance(event, RoomMessageText):
+                            v_data = event.source.get("content", {}).get("vox", {})
+                            if v_data.get("conversation_id"):
+                                room_conv_id = v_data.get("conversation_id")
+                                break
+                
+                if not room_conv_id:
+                    room_conv_id = f"conv_{room_id.replace('!', '').replace(':', '_')[:12]}"
+
+                # Second pass: process messages
                 messages = []
                 if hasattr(room_info, 'timeline') and room_info.timeline:
                     for event in room_info.timeline.events:
                         if isinstance(event, RoomMessageText):
-                            vox_data = event.source.get("content", {}).get("vox", {})
-                            if vox_data:
-                                message = Message(
-                                    from_vox_id=vox_data.get("from", "unknown"),
-                                    to_vox_id=vox_data.get("to", "unknown"),
-                                    timestamp=vox_data.get("timestamp", event.server_timestamp),
-                                    conversation_id=vox_data.get("conversation_id", "unknown"),
-                                    body=event.body
-                                )
-                                messages.append(message)
+                            content = event.source.get("content", {})
+                            vox_data = content.get("vox", {})
+                            
+                            from_id = vox_data.get("from", event.sender)
+                            to_id = vox_data.get("to", self.config.vox_id)
+                            ts = vox_data.get("timestamp", event.server_timestamp)
+                            
+                            # Use the unified room_conv_id
+                            conv_id = vox_data.get("conversation_id", room_conv_id)
+
+                            message = Message(
+                                from_vox_id=from_id,
+                                to_vox_id=to_id,
+                                timestamp=str(ts),
+                                conversation_id=conv_id,
+                                body=event.body
+                            )
+                            messages.append(message)
                 
                 if messages:
                     # Get the contact name from room members or latest message
                     with_contact = self._extract_contact_from_room(room_id, messages)
+                    
+                    # Save to local history
+                    self.storage.save_messages(messages[0].conversation_id, with_contact, messages)
                     
                     if from_contact is None or with_contact == from_contact:
                         conversation = Conversation(
@@ -132,7 +184,12 @@ class MatrixBackend:
     
     async def get_conversation(self, conversation_id: str) -> Optional[Conversation]:
         """Get full conversation history."""
-        # This would require room ID mapping - for now, return from inbox
+        # Check local history first
+        history = self.storage.get_history(conversation_id)
+        if history:
+            return history
+            
+        # Fallback: check inbox (which will sync and save)
         conversations = await self.get_inbox()
         for conv in conversations:
             if conv.conversation_id == conversation_id:
@@ -150,48 +207,86 @@ class MatrixBackend:
         # This would post to a Matrix room-based directory
         pass
     
-    async def _get_or_create_room(self, to_vox_id: str, conversation_id: str) -> str:
-        """Get or create a Matrix room for a conversation."""
-        # Check if we already have a room for this contact
+    def _server_domain(self) -> str:
+        """Extract the bare domain from the configured homeserver URL."""
+        return (
+            self.config.homeserver
+            .replace("https://", "")
+            .replace("http://", "")
+            .split(":")[0]
+            .split("/")[0]
+        )
+
+    def _to_matrix_id(self, vox_id: str) -> str:
+        """Ensure vox_id is a fully-qualified Matrix user ID."""
+        if vox_id.startswith("@") and ":" in vox_id:
+            return vox_id
+        return f"@{vox_id}:{self._server_domain()}"
+
+    def _make_room_alias(self, other_matrix_id: str) -> str:
+        """Return a stable, human-readable alias for the DM room between us and other_matrix_id.
+
+        Uses bare localparts sorted alphabetically so either party derives the
+        same alias, preventing duplicate rooms.
+        """
+        own_matrix_id = self.config.user_id or self._to_matrix_id(self.config.vox_id)
+        own_local = own_matrix_id.lstrip("@").split(":")[0]
+        other_local = other_matrix_id.lstrip("@").split(":")[0]
+        a, b = sorted([own_local, other_local])
+        return f"vox-dm-{a}-{b}"
+
+    async def _get_or_create_room(self, to_vox_id: str) -> str:
+        """Return the persistent Matrix room ID for a contact.
+
+        Rooms are per-contact (not per-conversation) and are identified by a
+        deterministic alias so they survive local-storage resets.  The invite
+        is sent once inside room_create; subsequent calls just resolve and
+        re-join the existing room.
+        """
+        # Fast path: local storage already has the room
         existing_room_id = self.storage.get_room(to_vox_id)
         if existing_room_id:
             return existing_room_id
-            
+
+        invite_user_id = self._to_matrix_id(to_vox_id)
+        room_alias = self._make_room_alias(invite_user_id)
+        full_alias = f"#{room_alias}:{self._server_domain()}"
+
+        # Try to find a room that was already created (e.g. after a storage reset)
         try:
-            # Create new room with minimal config for Conduit compatibility
-            response = await self.client.room_create(
-                name=f"Vox Chat",
-                preset=RoomPreset.private_chat
-            )
-            
-            if hasattr(response, 'room_id'):
-                room_id = response.room_id
-                # Invite the other agent
-                if to_vox_id.startswith("@") and ":" in to_vox_id:
-                    invite_user_id = to_vox_id
-                else:
-                    server_domain = self.config.homeserver.replace('http://', '').replace('https://', '').split(':')[0]
-                    invite_user_id = f"@{to_vox_id}:{server_domain}"
-                
-                await self.client.room_invite(
-                    room_id=room_id,
-                    user_id=invite_user_id
-                )
-                
-                # Save to storage
+            resolve = await self.client.room_resolve_alias(full_alias)
+            if hasattr(resolve, "room_id") and resolve.room_id:
+                room_id = resolve.room_id
+                await self.client.join(room_id)
                 self.storage.set_room(to_vox_id, room_id)
+                print(f"Rejoined existing room {room_id} via alias {full_alias}")
                 return room_id
-            else:
-                # Fallback: try to use response directly if it's a room_id string
-                if isinstance(response, str):
-                    self.storage.set_room(to_vox_id, response)
-                    return response
-                else:
-                    raise Exception(f"Failed to create room: {response}")
+        except Exception:
+            pass  # Room doesn't exist yet — create it below
+
+        # Create a new room with the stable alias and invite in one shot
+        try:
+            response = await self.client.room_create(
+                alias=room_alias,
+                name="Vox Chat",
+                preset=RoomPreset.private_chat,
+                invite=[invite_user_id],
+            )
+
+            if hasattr(response, "room_id") and response.room_id:
+                room_id = response.room_id
+                self.storage.set_room(to_vox_id, room_id)
+                print(f"Created room {room_id} with alias {full_alias}")
+                return room_id
+
+            if isinstance(response, str):
+                self.storage.set_room(to_vox_id, response)
+                return response
+
+            raise Exception(f"Unexpected room_create response: {response}")
         except Exception as e:
             print(f"Room creation error: {e}")
-            # For demo purposes, return a fake room ID
-            return f"!demo_{conversation_id}:localhost"
+            return f"!demo_{uuid.uuid4().hex[:8]}:localhost"
     
     def _extract_contact_from_room(self, room_id: str, messages: List[Message]) -> str:
         """Extract contact name from room information."""

@@ -20,6 +20,7 @@ class Config(BaseModel):
     access_token: Optional[str] = None
     device_id: Optional[str] = None
     user_id: Optional[str] = None
+    password: Optional[str] = None
     
     @classmethod
     def load(cls, config_path: Optional[Path] = None) -> "Config":

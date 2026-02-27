@@ -42,6 +42,7 @@ class Storage:
         
         self.contacts_file = self.vox_home / "contacts.toml"
         self.rooms_file = self.vox_home / "rooms.toml"
+        self.history_file = self.vox_home / "history.toml"
         self.sync_token_file = self.vox_home / "sync_token"
         
         self._ensure_contacts_file()
@@ -54,6 +55,9 @@ class Storage:
         if not self.rooms_file.exists():
             with open(self.rooms_file, "w") as f:
                 toml.dump({}, f)
+        if not self.history_file.exists():
+            with open(self.history_file, "w") as f:
+                toml.dump({"conversations": {}}, f)
     
     def add_contact(self, name: str, vox_id: str) -> None:
         """Add a contact."""
@@ -109,6 +113,61 @@ class Storage:
         rooms[vox_id] = room_id
         with open(self.rooms_file, "w") as f:
             toml.dump(rooms, f)
+
+    def save_messages(self, conversation_id: str, with_contact: str, messages: List[Message]) -> None:
+        """Save messages to local history."""
+        with open(self.history_file, "r") as f:
+            data = toml.load(f)
+            
+        if conversation_id not in data["conversations"]:
+            data["conversations"][conversation_id] = {
+                "with_contact": with_contact,
+                "messages": []
+            }
+            
+        existing_messages = data["conversations"][conversation_id]["messages"]
+        added = False
+        for msg in messages:
+            msg_dict = msg.model_dump()
+            # Simple deduplication by timestamp and body
+            if not any(m["timestamp"] == msg_dict["timestamp"] and m["body"] == msg_dict["body"] for m in existing_messages):
+                existing_messages.append(msg_dict)
+                added = True
+        
+        if added:
+            # Sort messages by timestamp
+            existing_messages.sort(key=lambda x: str(x["timestamp"]))
+            with open(self.history_file, "w") as f:
+                toml.dump(data, f)
+                
+    def get_history(self, conversation_id: str) -> Optional[Conversation]:
+        """Get local conversation history."""
+        with open(self.history_file, "r") as f:
+            data = toml.load(f)
+            
+        conv_data = data["conversations"].get(conversation_id)
+        if not conv_data:
+            return None
+            
+        return Conversation(
+            conversation_id=conversation_id,
+            with_contact=conv_data["with_contact"],
+            messages=[Message(**m) for m in conv_data["messages"]]
+        )
+
+    def get_all_conversations(self) -> List[Conversation]:
+        """Get all stored conversations."""
+        with open(self.history_file, "r") as f:
+            data = toml.load(f)
+            
+        results = []
+        for conv_id, conv_data in data["conversations"].items():
+            results.append(Conversation(
+                conversation_id=conv_id,
+                with_contact=conv_data["with_contact"],
+                messages=[Message(**m) for m in conv_data["messages"]]
+            ))
+        return results
 
     def clear_sync_token(self) -> None:
         """Clear the sync token."""

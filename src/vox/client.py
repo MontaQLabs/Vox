@@ -81,26 +81,39 @@ class VoxClient:
                 data = await resp.json()
                 
                 if resp.status == 200:
-                    # Registration successful
                     access_token = data["access_token"]
                     user_id = data["user_id"]
                     device_id = data["device_id"]
                 elif resp.status == 400 and data.get("errcode") == "M_USER_IN_USE":
-                    # Username taken — try to login instead
-                    access_token, user_id, device_id = await self._login(
-                        server, vox_id, password
-                    )
+                    # Username taken — re-login only if we already have the password
+                    # stored from a previous init of this exact account.
+                    try:
+                        existing = Config.load()
+                        stored_password = getattr(existing, "password", None)
+                    except FileNotFoundError:
+                        stored_password = None
+
+                    if stored_password and existing.vox_id == vox_id and existing.homeserver == server:
+                        access_token, user_id, device_id = await self._login(
+                            server, vox_id, stored_password
+                        )
+                    else:
+                        raise Exception(
+                            f"Username '{vox_id}' is already taken. "
+                            "Run 'vox init --username <different-name>' to pick another."
+                        )
                 else:
                     error = data.get("error", f"HTTP {resp.status}")
                     raise Exception(f"Registration failed: {error}")
         
-        # Step 2: Save config with real credentials
+        # Step 2: Save config with real credentials (including password for future re-auth)
         self.config = Config(
             vox_id=vox_id,
             homeserver=server,
             access_token=access_token,
             device_id=device_id,
             user_id=user_id,
+            password=password,
         )
         
         self.config.save()
