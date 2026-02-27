@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 
 
 # Canonical homeserver — Conduit instance
-VOX_HOMESERVER = "http://80.225.209.87:3338"
-VOX_DOMAIN = "your.vps.ip"
+VOX_HOMESERVER = "https://80-225-209-87.sslip.io"
+VOX_DOMAIN = "80-225-209-87.sslip.io"
 
 
 class Config(BaseModel):

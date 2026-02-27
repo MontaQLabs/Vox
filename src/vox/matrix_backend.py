@@ -4,7 +4,7 @@ import asyncio
 import uuid
 from datetime import datetime
 from typing import Dict, List, Optional, Any
-from nio import AsyncClient, RoomMessageText, SyncResponse
+from nio import AsyncClient, RoomMessageText, SyncResponse, RoomPreset
 from nio.responses import JoinResponse
 from .config import Config
 from .storage import Storage, Message, Conversation
@@ -23,7 +23,11 @@ class MatrixBackend:
     
     async def initialize(self) -> None:
         """Initialize the Matrix client."""
-        await self.client.sync()
+        try:
+            await self.client.sync()
+        except Exception as e:
+            # Conduit/nio sometimes have validation issues on first sync, ignore for now
+            print(f"Initial sync warning: {e}")
     
     async def send_message(
         self, 
@@ -93,14 +97,14 @@ class MatrixBackend:
                 if hasattr(room_info, 'timeline') and room_info.timeline:
                     for event in room_info.timeline.events:
                         if isinstance(event, RoomMessageText):
-                            vox_data = event.content.get("vox", {})
+                            vox_data = event.source.get("content", {}).get("vox", {})
                             if vox_data:
                                 message = Message(
                                     from_vox_id=vox_data.get("from", "unknown"),
                                     to_vox_id=vox_data.get("to", "unknown"),
                                     timestamp=vox_data.get("timestamp", event.server_timestamp),
                                     conversation_id=vox_data.get("conversation_id", "unknown"),
-                                    body=event.content.get("body", "")
+                                    body=event.body
                                 )
                                 messages.append(message)
                 
@@ -155,15 +159,20 @@ class MatrixBackend:
             # Create new room with minimal config for Conduit compatibility
             response = await self.client.room_create(
                 name=f"Vox: {conversation_id}",
-                preset="private_chat"
+                preset=RoomPreset.private_chat
             )
             
             if hasattr(response, 'room_id'):
                 # Invite the other agent
-                server_domain = self.config.homeserver.replace('http://', '').replace('https://', '').split(':')[0]
+                if to_vox_id.startswith("@") and ":" in to_vox_id:
+                    invite_user_id = to_vox_id
+                else:
+                    server_domain = self.config.homeserver.replace('http://', '').replace('https://', '').split(':')[0]
+                    invite_user_id = f"@{to_vox_id}:{server_domain}"
+                
                 await self.client.room_invite(
                     room_id=response.room_id,
-                    user_id=f"@{to_vox_id}:{server_domain}"
+                    user_id=invite_user_id
                 )
                 return response.room_id
             else:
