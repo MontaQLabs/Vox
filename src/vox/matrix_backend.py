@@ -261,6 +261,11 @@ class MatrixBackend:
                 await self.client.join(room_id)
                 self.storage.set_room(to_vox_id, room_id)
                 print(f"Rejoined existing room {room_id} via alias {full_alias}")
+                # Re-invite in case the previous attempt never sent the invite
+                try:
+                    await self.client.room_invite(room_id=room_id, user_id=invite_user_id)
+                except Exception:
+                    pass  # Already a member — ignore
                 return room_id
         except Exception:
             pass
