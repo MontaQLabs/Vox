@@ -238,10 +238,11 @@ class MatrixBackend:
     async def _get_or_create_room(self, to_vox_id: str) -> str:
         """Return the persistent Matrix room ID for a contact.
 
-        Rooms are per-contact (not per-conversation) and are identified by a
-        deterministic alias so they survive local-storage resets.  The invite
-        is sent once inside room_create; subsequent calls just resolve and
-        re-join the existing room.
+        Rooms are per-contact and identified by a deterministic alias so they
+        survive local-storage resets.  Room creation and invite are separated
+        so federated invites (e.g. matrix.org users) don't break room creation
+        on Conduit.  The room is marked is_direct so Matrix clients show it in
+        the DMs section.
         """
         # Fast path: local storage already has the room
         existing_room_id = self.storage.get_room(to_vox_id)
@@ -252,7 +253,7 @@ class MatrixBackend:
         room_alias = self._make_room_alias(invite_user_id)
         full_alias = f"#{room_alias}:{self._server_domain()}"
 
-        # Try to find a room that was already created (e.g. after a storage reset)
+        # Room may already exist on the server (e.g. after a storage reset)
         try:
             resolve = await self.client.room_resolve_alias(full_alias)
             if hasattr(resolve, "room_id") and resolve.room_id:
@@ -262,28 +263,34 @@ class MatrixBackend:
                 print(f"Rejoined existing room {room_id} via alias {full_alias}")
                 return room_id
         except Exception:
-            pass  # Room doesn't exist yet — create it below
+            pass
 
-        # Create a new room with the stable alias and invite in one shot
+        # Create the room first (no inline invite — avoids Conduit federation errors)
         try:
             response = await self.client.room_create(
                 alias=room_alias,
                 name="Vox Chat",
                 preset=RoomPreset.private_chat,
-                invite=[invite_user_id],
+                is_direct=True,
             )
 
             if hasattr(response, "room_id") and response.room_id:
                 room_id = response.room_id
-                self.storage.set_room(to_vox_id, room_id)
-                print(f"Created room {room_id} with alias {full_alias}")
-                return room_id
+            elif isinstance(response, str):
+                room_id = response
+            else:
+                raise Exception(f"Unexpected room_create response: {response}")
 
-            if isinstance(response, str):
-                self.storage.set_room(to_vox_id, response)
-                return response
+            self.storage.set_room(to_vox_id, room_id)
+            print(f"Created room {room_id} with alias {full_alias}")
 
-            raise Exception(f"Unexpected room_create response: {response}")
+            # Invite separately so federated users work correctly
+            try:
+                await self.client.room_invite(room_id=room_id, user_id=invite_user_id)
+            except Exception as e:
+                print(f"Invite warning (room still created): {e}")
+
+            return room_id
         except Exception as e:
             print(f"Room creation error: {e}")
             return f"!demo_{uuid.uuid4().hex[:8]}:localhost"

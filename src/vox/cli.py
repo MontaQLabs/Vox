@@ -138,7 +138,7 @@ def contact_remove(name):
 @click.argument("message")
 @click.option("--conv", help="Conversation ID for replies")
 def send(contact_name, message, conv):
-    """Send a message to a contact."""
+    """Send a message to CONTACT (name or raw Matrix ID like @user:server)."""
     try:
         client = VoxClient()
         conv_id = asyncio.run(client.send_message(contact_name, message, conv))

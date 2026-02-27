@@ -174,18 +174,28 @@ class VoxClient:
         return self.storage.remove_contact(name)
     
     async def send_message(
-        self, 
-        contact: str, 
-        message: str, 
+        self,
+        contact: str,
+        message: str,
         conversation_id: Optional[str] = None
     ) -> str:
-        """Send a message to a contact."""
+        """Send a message to a contact name or a raw Matrix ID (@user:server)."""
         backend = self._ensure_backend()
-        
-        vox_id = self.storage.get_contact(contact)
-        if vox_id is None:
-            raise ValueError(f"Contact '{contact}' not found")
-        
+
+        if contact.startswith("@") and ":" in contact:
+            # Raw Matrix ID passed directly — auto-save using the localpart as name
+            vox_id = contact
+            name = contact.lstrip("@").split(":")[0]
+            if not self.storage.get_contact(name):
+                self.storage.add_contact(name, vox_id)
+        else:
+            vox_id = self.storage.get_contact(contact)
+            if vox_id is None:
+                raise ValueError(
+                    f"Contact '{contact}' not found. "
+                    "Pass a full Matrix ID (@user:server) or add with 'vox contact add'."
+                )
+
         await backend.initialize()
         conv_id = await backend.send_message(vox_id, message, conversation_id)
         return conv_id
