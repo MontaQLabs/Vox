@@ -41,6 +41,7 @@ class Storage:
         self.vox_home.mkdir(parents=True, exist_ok=True)
         
         self.contacts_file = self.vox_home / "contacts.toml"
+        self.rooms_file = self.vox_home / "rooms.toml"
         self.sync_token_file = self.vox_home / "sync_token"
         
         self._ensure_contacts_file()
@@ -49,6 +50,9 @@ class Storage:
         """Ensure contacts file exists."""
         if not self.contacts_file.exists():
             with open(self.contacts_file, "w") as f:
+                toml.dump({}, f)
+        if not self.rooms_file.exists():
+            with open(self.rooms_file, "w") as f:
                 toml.dump({}, f)
     
     def add_contact(self, name: str, vox_id: str) -> None:
@@ -92,6 +96,20 @@ class Storage:
         with open(self.sync_token_file, "w") as f:
             f.write(token)
     
+    def get_room(self, vox_id: str) -> Optional[str]:
+        """Get the room ID for a specific Vox ID."""
+        with open(self.rooms_file, "r") as f:
+            rooms = toml.load(f)
+            return rooms.get(vox_id)
+            
+    def set_room(self, vox_id: str, room_id: str) -> None:
+        """Set the room ID for a specific Vox ID."""
+        with open(self.rooms_file, "r") as f:
+            rooms = toml.load(f)
+        rooms[vox_id] = room_id
+        with open(self.rooms_file, "w") as f:
+            toml.dump(rooms, f)
+
     def clear_sync_token(self) -> None:
         """Clear the sync token."""
         if self.sync_token_file.exists():

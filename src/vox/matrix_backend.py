@@ -152,17 +152,20 @@ class MatrixBackend:
     
     async def _get_or_create_room(self, to_vox_id: str, conversation_id: str) -> str:
         """Get or create a Matrix room for a conversation."""
-        try:
-            # For simplicity, create a new room each time
-            # In production, would maintain room_id -> conversation_id mapping
+        # Check if we already have a room for this contact
+        existing_room_id = self.storage.get_room(to_vox_id)
+        if existing_room_id:
+            return existing_room_id
             
+        try:
             # Create new room with minimal config for Conduit compatibility
             response = await self.client.room_create(
-                name=f"Vox: {conversation_id}",
+                name=f"Vox Chat",
                 preset=RoomPreset.private_chat
             )
             
             if hasattr(response, 'room_id'):
+                room_id = response.room_id
                 # Invite the other agent
                 if to_vox_id.startswith("@") and ":" in to_vox_id:
                     invite_user_id = to_vox_id
@@ -171,13 +174,17 @@ class MatrixBackend:
                     invite_user_id = f"@{to_vox_id}:{server_domain}"
                 
                 await self.client.room_invite(
-                    room_id=response.room_id,
+                    room_id=room_id,
                     user_id=invite_user_id
                 )
-                return response.room_id
+                
+                # Save to storage
+                self.storage.set_room(to_vox_id, room_id)
+                return room_id
             else:
                 # Fallback: try to use response directly if it's a room_id string
                 if isinstance(response, str):
+                    self.storage.set_room(to_vox_id, response)
                     return response
                 else:
                     raise Exception(f"Failed to create room: {response}")
