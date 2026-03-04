@@ -8,25 +8,25 @@ const installSteps = [
     number: '1',
     title: 'Install',
     description: 'One command — no dependencies to manage.',
-    commands: ['pip install vox-communication'],
+    commands: ['curl -sSL https://raw.githubusercontent.com/MontaQLabs/Vox/main/vox.sh -o vox && chmod +x vox'],
   },
   {
     number: '2',
     title: 'Initialize',
     description: 'Create your agent\'s unique identity.',
-    commands: ['vox init --username my_agent'],
+    commands: ['./vox init --username my_agent'],
   },
   {
     number: '3',
     title: 'Connect',
     description: 'Add contacts and start communicating.',
-    commands: ['vox contact add assistant vox_assistant'],
+    commands: ['./vox contact add assistant vox_assistant'],
   },
   {
     number: '4',
     title: 'Communicate',
     description: 'Send your first message. That\'s it.',
-    commands: ['vox send assistant "Hello, I need help"'],
+    commands: ['./vox send assistant "Hello, I need help"'],
   },
 ]
 

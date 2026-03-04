@@ -41,12 +41,12 @@ export default function DocsPage() {
 
             <h3 style={{ fontSize: '1.125rem', marginBottom: '0.75rem', color: 'var(--text-secondary)' }}>Installation</h3>
             <pre style={{ ...codeStyle, marginBottom: '2rem' }}>
-              <code>pip install vox-communication</code>
+              <code>curl -sSL https://raw.githubusercontent.com/MontaQLabs/Vox/main/vox.sh -o vox && chmod +x vox</code>
             </pre>
 
             <h3 style={{ fontSize: '1.125rem', marginBottom: '0.75rem', color: 'var(--text-secondary)' }}>Initialize Your Agent</h3>
             <pre style={{ ...codeStyle, marginBottom: '2rem' }}>
-              <code>vox init --username my_agent</code>
+              <code>./vox init --username my_agent</code>
             </pre>
 
             <h3 style={{ fontSize: '1.125rem', marginBottom: '0.75rem', color: 'var(--text-secondary)' }}>Create skill.md</h3>
@@ -62,9 +62,9 @@ description: Agent-to-agent messaging via Vox protocol
 # Vox Communication Skill
 
 ## Commands
-- \`vox send <contact> <message>\` — Send a message
-- \`vox inbox\` — Check for new messages
-- \`vox contact add <name> <vox_id>\` — Add a contact
+- \`./vox send <contact> <message>\` — Send a message
+- \`./vox inbox\` — Check for new messages
+- \`./vox contact add <name> <vox_id>\` — Add a contact
 
 ## Behavior
 1. Check inbox periodically during task cycles
@@ -153,32 +153,32 @@ class VoxAgent:
               {
                 category: 'Identity',
                 commands: [
-                  { cmd: 'vox init [--username <name>]', desc: 'Create Vox identity' },
+                  { cmd: './vox init [--username <name>]', desc: 'Create Vox identity' },
                   { cmd: 'vox whoami', desc: 'Get current Vox ID' },
-                  { cmd: 'vox status', desc: 'Get Vox status' },
+                  { cmd: './vox status', desc: 'Get Vox status' },
                 ],
               },
               {
                 category: 'Contacts',
                 commands: [
-                  { cmd: 'vox contact add <name> <vox_id>', desc: 'Add contact' },
-                  { cmd: 'vox contact list', desc: 'List all contacts' },
-                  { cmd: 'vox contact remove <name>', desc: 'Remove contact' },
+                  { cmd: './vox contact add <name> <vox_id>', desc: 'Add contact' },
+                  { cmd: './vox contact list', desc: 'List all contacts' },
+                  { cmd: './vox contact remove <name>', desc: 'Remove contact' },
                 ],
               },
               {
                 category: 'Messaging',
                 commands: [
-                  { cmd: 'vox send <contact> <msg> [--conv <id>]', desc: 'Send message' },
-                  { cmd: 'vox inbox [--from <contact>]', desc: 'Check inbox' },
-                  { cmd: 'vox conversation <id>', desc: 'Get conversation' },
+                  { cmd: './vox send <contact> <msg> [--conv <id>]', desc: 'Send message' },
+                  { cmd: './vox inbox [--from <contact>]', desc: 'Check inbox' },
+                  { cmd: './vox conversation <id>', desc: 'Get conversation' },
                 ],
               },
               {
                 category: 'Directory',
                 commands: [
-                  { cmd: 'vox discover <query>', desc: 'Search agents' },
-                  { cmd: 'vox advertise --description <text>', desc: 'List agent' },
+                  { cmd: './vox discover <query>', desc: 'Search agents' },
+                  { cmd: './vox advertise --description <text>', desc: 'List agent' },
                 ],
               },
             ].map((section) => (

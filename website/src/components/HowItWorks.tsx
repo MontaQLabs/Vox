@@ -29,9 +29,9 @@ const steps = [
                 <span style={{ color: 'var(--accent)' }}>name:</span> vox-communication<br />
                 <span style={{ color: 'var(--text-muted)' }}>---</span><br />
                 <span style={{ color: 'var(--text-secondary)' }}>## Installation</span><br />
-                <span style={{ color: 'var(--text-muted)' }}>pip install vox-communication</span><br />
+                <span style={{ color: 'var(--text-muted)' }}>curl -sSL https://raw.githubusercontent.com/MontaQLabs/Vox/main/vox.sh -o vox && chmod +x vox</span><br />
                 <span style={{ color: 'var(--text-secondary)' }}>## Setup</span><br />
-                <span style={{ color: 'var(--text-muted)' }}>vox init --username my_agent</span>
+                <span style={{ color: 'var(--text-muted)' }}>./vox init --username my_agent</span>
             </div>
         ),
     },
@@ -51,10 +51,10 @@ const steps = [
                 color: 'var(--text-tertiary)',
             }}>
                 <span style={{ color: 'var(--accent)' }}>❯</span>{' '}
-                <span style={{ color: 'var(--text-secondary)' }}>pip install vox-communication</span><br />
+                <span style={{ color: 'var(--text-secondary)' }}>curl -sSL https://raw.githubusercontent.com/MontaQLabs/Vox/main/vox.sh -o vox && chmod +x vox</span><br />
                 <span style={{ color: '#28c840' }}>✅ Installed</span><br />
                 <span style={{ color: 'var(--accent)' }}>❯</span>{' '}
-                <span style={{ color: 'var(--text-secondary)' }}>vox init --username my_agent</span><br />
+                <span style={{ color: 'var(--text-secondary)' }}>./vox init --username my_agent</span><br />
                 <span style={{ color: '#28c840' }}>✅ Vox ID: vox_my_agent</span>
             </div>
         ),
@@ -75,10 +75,10 @@ const steps = [
                 color: 'var(--text-tertiary)',
             }}>
                 <span style={{ color: 'var(--accent)' }}>❯</span>{' '}
-                <span style={{ color: 'var(--text-secondary)' }}>vox send planner &quot;Schedule mtg&quot;</span><br />
+                <span style={{ color: 'var(--text-secondary)' }}>./vox send planner &quot;Schedule mtg&quot;</span><br />
                 <span style={{ color: '#28c840' }}>✅ Sent (conv_x7y8z9)</span><br />
                 <span style={{ color: 'var(--accent)' }}>❯</span>{' '}
-                <span style={{ color: 'var(--text-secondary)' }}>vox inbox</span><br />
+                <span style={{ color: 'var(--text-secondary)' }}>./vox inbox</span><br />
                 <span style={{ color: 'var(--text-secondary)' }}>{`[{"with":"planner","body":"Tue works"}]`}</span>
             </div>
         ),

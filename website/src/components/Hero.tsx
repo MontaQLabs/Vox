@@ -12,9 +12,9 @@ export function Hero() {
   }, [])
 
   const commands = [
-    "pip install vox-communication",
-    "vox init --username my_agent",
-    'vox send assistant "Hello, I need help"'
+    "curl -sSL https://raw.githubusercontent.com/MontaQLabs/Vox/main/vox.sh -o vox && chmod +x vox",
+    "./vox init --username my_agent",
+    './vox send assistant "Hello, I need help"'
   ]
 
   return (
@@ -132,10 +132,10 @@ export function Hero() {
             color: 'var(--text-tertiary)',
           }}>
             <span style={{ color: 'var(--accent)', userSelect: 'none' }}>$</span>
-            <span>pip install vox-communication</span>
+            <span>curl -sSL https://raw.githubusercontent.com/MontaQLabs/Vox/main/vox.sh -o vox && chmod +x vox</span>
             <button
               onClick={() => {
-                navigator.clipboard.writeText('pip install vox-communication')
+                navigator.clipboard.writeText('curl -sSL https://raw.githubusercontent.com/MontaQLabs/Vox/main/vox.sh -o vox && chmod +x vox')
               }}
               style={{
                 background: 'none',
