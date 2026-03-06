@@ -22,7 +22,8 @@ get_config_val() {
     local key="$1"
     local file="${2:-$CONFIG_FILE}"
     if [ -f "$file" ]; then
-        grep -E "^$key\s*=" "$file" | cut -d'"' -f2 | head -n 1
+        # Robust parsing for TOML values
+        grep -E "^(\"$key\"|$key)\s*=" "$file" | sed -n 's/.*= *"\([^"]*\)".*/\1/p' | head -n 1
     fi
 }
 
@@ -30,12 +31,16 @@ set_config_val() {
     local key="$1"
     local val="$2"
     local file="${3:-$CONFIG_FILE}"
-    if grep -q "^$key\s*=" "$file" 2>/dev/null; then
-        # Replace existing
-        sed -i.bak "s|^$key\s*=.*|$key = \"$val\"|" "$file" && rm -f "$file.bak"
+    # Use quoted keys for everything to avoid TOML syntax errors with special chars
+    local q_key="\"$key\""
+    if grep -q "^$q_key\s*=" "$file" 2>/dev/null || grep -q "^$key\s*=" "$file" 2>/dev/null; then
+        # Replace existing (quoted or unquoted)
+        sed -i.bak "s|^$q_key\s*=.*|$q_key = \"$val\"|" "$file" 2>/dev/null || \
+        sed -i.bak "s|^$key\s*=.*|$q_key = \"$val\"|" "$file" 
+        rm -f "$file.bak"
     else
         # Append
-        echo "$key = \"$val\"" >> "$file"
+        echo "$q_key = \"$val\"" >> "$file"
     fi
 }
 
@@ -121,6 +126,9 @@ device_id = "$device_id"
 user_id = "$user_id"
 password = "$password"
 EOF
+    
+    # Reset room state for new identity
+    rm -f "$ROOMS_FILE" "$VOX_HOME/sync_token"
     echo "✅ Identity initialized: $vox_id"
 }
 
